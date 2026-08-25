@@ -4,12 +4,81 @@ public struct SettingsView: View {
     @ObservedObject var appState = AppState.shared
     @ObservedObject var powerManager = PowerManager.shared
     @ObservedObject var lockSync = LockScreenSync.shared
+    @ObservedObject var autoChange = AutoChangeManager.shared
     
     public init() {}
     
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
+                // Section: Auto-Change Wallpaper Playlist
+                VStack(alignment: .leading, spacing: 12) {
+                    Label("Auto-Change Wallpaper Playlist", systemImage: "clock.arrow.2.circlepath")
+                        .font(.headline)
+                        .foregroundColor(.indigo)
+                    
+                    VStack(alignment: .leading, spacing: 14) {
+                        Toggle(isOn: $autoChange.isEnabled) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Enable Auto-Change Wallpaper")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                Text("Automatically cycles through your 4K live wallpapers at your preferred interval.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .toggleStyle(.switch)
+                        
+                        if autoChange.isEnabled {
+                            Divider()
+                            
+                            // Interval Selector
+                            HStack {
+                                Text("Rotation Interval")
+                                    .font(.subheadline)
+                                Spacer()
+                                Picker("", selection: $autoChange.interval) {
+                                    ForEach(AutoChangeInterval.allCases) { interval in
+                                        Text(interval.rawValue).tag(interval)
+                                    }
+                                }
+                                .pickerStyle(.menu)
+                                .frame(width: 220)
+                            }
+                            
+                            // Pool Source Selector
+                            HStack {
+                                Text("Wallpaper Source Pool")
+                                    .font(.subheadline)
+                                Spacer()
+                                Picker("", selection: $autoChange.source) {
+                                    ForEach(AutoChangeSource.allCases) { source in
+                                        Text(source.rawValue).tag(source)
+                                    }
+                                }
+                                .pickerStyle(.menu)
+                                .frame(width: 220)
+                            }
+                            
+                            Toggle(isOn: $autoChange.isShuffle) {
+                                Text("Shuffle (Random Order)")
+                                    .font(.subheadline)
+                            }
+                            .toggleStyle(.checkbox)
+                            
+                            Toggle(isOn: $autoChange.changeOnWake) {
+                                Text("Change wallpaper on Mac wake/unlock")
+                                    .font(.subheadline)
+                            }
+                            .toggleStyle(.checkbox)
+                        }
+                    }
+                    .padding(16)
+                    .background(Color(NSColor.controlBackgroundColor))
+                    .cornerRadius(12)
+                }
+                
                 // Section: Power & Energy Management
                 VStack(alignment: .leading, spacing: 12) {
                     Label("Power & Energy Management", systemImage: "bolt.batteryblock.fill")
@@ -118,7 +187,7 @@ public struct SettingsView: View {
                     Text("Wallep for macOS — Open Source")
                         .font(.subheadline)
                         .fontWeight(.bold)
-                    Text("Version 1.0.0 (Native Swift & AppKit) • Licensed under MIT")
+                    Text("Version 1.0.0 (Native Swift & AppKit) • 5,000+ Curated Wallpapers • MIT License")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }

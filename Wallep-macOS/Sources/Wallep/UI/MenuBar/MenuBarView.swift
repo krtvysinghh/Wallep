@@ -4,6 +4,7 @@ public struct MenuBarView: View {
     @ObservedObject var appState = AppState.shared
     @ObservedObject var wallpaperManager = WallpaperManager.shared
     @ObservedObject var powerManager = PowerManager.shared
+    @ObservedObject var autoChange = AutoChangeManager.shared
     
     public init() {}
     
@@ -42,19 +43,35 @@ public struct MenuBarView: View {
             // Current Wallpaper Preview
             if let current = wallpaperManager.currentWallpaper {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("NOW PLAYING")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(.secondary)
+                    HStack {
+                        Text("NOW PLAYING")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.secondary)
+                        
+                        Spacer()
+                        
+                        // Next wallpaper button
+                        Button(action: {
+                            autoChange.triggerNextWallpaper()
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "forward.fill")
+                                    .font(.system(size: 9))
+                                Text("Next")
+                                    .font(.system(size: 10, weight: .semibold))
+                            }
+                            .foregroundColor(.indigo)
+                        }
+                        .buttonStyle(.plain)
+                    }
                     
                     HStack(spacing: 10) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color.gray.opacity(0.2))
-                                .frame(width: 64, height: 40)
-                            
-                            Image(systemName: "play.tv.fill")
-                                .foregroundColor(.indigo)
-                        }
+                        Image(nsImage: WallpaperThumbnailRenderer.shared.thumbnail(for: current, size: CGSize(width: 120, height: 75)))
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 64, height: 42)
+                            .cornerRadius(6)
+                            .clipped()
                         
                         VStack(alignment: .leading, spacing: 2) {
                             Text(current.title)
@@ -78,7 +95,7 @@ public struct MenuBarView: View {
                         }
                         .buttonStyle(.plain)
                     }
-                    .padding(10)
+                    .padding(8)
                     .background(Color.primary.opacity(0.04))
                     .cornerRadius(10)
                 }
@@ -87,6 +104,27 @@ public struct MenuBarView: View {
                 
                 Divider()
             }
+            
+            // Auto-Change Quick Toggle Row
+            HStack {
+                HStack(spacing: 6) {
+                    Image(systemName: autoChange.isEnabled ? "clock.arrow.2.circlepath" : "clock")
+                        .font(.caption)
+                        .foregroundColor(autoChange.isEnabled ? .emerald : .secondary)
+                    Text(autoChange.isEnabled ? "Auto-Change (\(autoChange.timeRemainingString.isEmpty ? "Active" : autoChange.timeRemainingString))" : "Auto-Change Disabled")
+                        .font(.caption)
+                }
+                
+                Spacer()
+                
+                Toggle("", isOn: $autoChange.isEnabled)
+                    .toggleStyle(.switch)
+                    .controlSize(.mini)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 6)
+            
+            Divider()
             
             // Quick Volume & Display Info
             VStack(alignment: .leading, spacing: 8) {
@@ -130,7 +168,7 @@ public struct MenuBarView: View {
                 }) {
                     HStack {
                         Image(systemName: "square.grid.2x2")
-                        Text("Browse 4K Wallpaper Gallery (2700+)")
+                        Text("Browse 4K Wallpaper Gallery (5,000+)")
                         Spacer()
                     }
                     .padding(.vertical, 4)
@@ -180,7 +218,7 @@ public struct MenuBarView: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
         }
-        .frame(width: 320)
+        .frame(width: 330)
     }
     
     private func openFullWindow(tab: ActiveTab) {

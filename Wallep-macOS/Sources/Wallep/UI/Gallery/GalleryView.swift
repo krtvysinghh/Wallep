@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 public struct GalleryView: View {
     @ObservedObject var library = LibraryManager.shared
     @ObservedObject var appState = AppState.shared
+    @ObservedObject var autoChange = AutoChangeManager.shared
     @State private var hoveredItemId: String? = nil
     @State private var isDragTargeted: Bool = false
     
@@ -15,13 +16,13 @@ public struct GalleryView: View {
     
     public var body: some View {
         VStack(spacing: 0) {
-            // Header Bar: Search & Actions
-            HStack(spacing: 16) {
+            // Header Bar: Search, Auto-Change & Actions
+            HStack(spacing: 14) {
                 // Search bar
                 HStack {
                     Image(systemName: "magnifyingglass")
                         .foregroundColor(.secondary)
-                    TextField("Search 4K wallpapers...", text: $library.searchQuery)
+                    TextField("Search 5,000+ 4K wallpapers...", text: $library.searchQuery)
                         .textFieldStyle(.plain)
                     if !library.searchQuery.isEmpty {
                         Button(action: { library.searchQuery = "" }) {
@@ -35,7 +36,31 @@ public struct GalleryView: View {
                 .padding(.vertical, 8)
                 .background(Color.primary.opacity(0.06))
                 .cornerRadius(10)
-                .frame(maxWidth: 380)
+                .frame(maxWidth: 340)
+                
+                // Auto-Change Quick Toggle Pill
+                Button(action: {
+                    autoChange.toggle()
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: autoChange.isEnabled ? "clock.arrow.2.circlepath" : "clock")
+                            .font(.caption)
+                            .foregroundColor(autoChange.isEnabled ? .emerald : .secondary)
+                        Text(autoChange.isEnabled ? "Auto-Change: \(autoChange.timeRemainingString.isEmpty ? "Active" : autoChange.timeRemainingString)" : "Auto-Change: Off")
+                            .font(.caption)
+                            .fontWeight(.medium)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(autoChange.isEnabled ? Color.emerald.opacity(0.15) : Color.primary.opacity(0.05))
+                    .foregroundColor(autoChange.isEnabled ? .emerald : .primary)
+                    .cornerRadius(8)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(autoChange.isEnabled ? Color.emerald.opacity(0.3) : Color.clear, lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
                 
                 Spacer()
                 
@@ -98,7 +123,7 @@ public struct GalleryView: View {
                     VStack(spacing: 12) {
                         ProgressView()
                             .controlSize(.large)
-                        Text("Preparing native 4K live wallpapers...")
+                        Text("Loading 5,000+ 4K live wallpapers...")
                             .font(.headline)
                             .foregroundColor(.secondary)
                     }
@@ -106,7 +131,7 @@ public struct GalleryView: View {
                 } else {
                     ScrollView {
                         LazyVGrid(columns: columns, spacing: 24) {
-                            ForEach(library.filteredWallpapers) { wallpaper in
+                            ForEach(library.filteredWallpapers.prefix(300)) { wallpaper in
                                 WallpaperCard(
                                     wallpaper: wallpaper,
                                     isHovered: hoveredItemId == wallpaper.id,
@@ -194,25 +219,13 @@ public struct WallpaperCard: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             ZStack(alignment: .topTrailing) {
-                // Background thumbnail / image
+                // Background thumbnail rendered uniquely per wallpaper
                 ZStack(alignment: .bottomLeading) {
-                    if !wallpaper.thumbnailURL.isEmpty, let nsImg = NSImage(contentsOfFile: wallpaper.thumbnailURL) {
-                        Image(nsImage: nsImg)
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(height: 180)
-                            .clipped()
-                    } else {
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(
-                                LinearGradient(
-                                    colors: [Color.indigo.opacity(0.6), Color.purple.opacity(0.8), Color.black],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .frame(height: 180)
-                    }
+                    Image(nsImage: WallpaperThumbnailRenderer.shared.thumbnail(for: wallpaper))
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(height: 180)
+                        .clipped()
                     
                     // Live Indicator & Resolution Tag
                     HStack {
@@ -292,4 +305,8 @@ public struct WallpaperCard: View {
         .background(Color(NSColor.controlBackgroundColor))
         .cornerRadius(16)
     }
+}
+
+extension Color {
+    static let emerald = Color(red: 0.15, green: 0.80, blue: 0.45)
 }
