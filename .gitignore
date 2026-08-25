@@ -1,0 +1,25 @@
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# SwiftPM build artifacts
+.build/
+.swiftpm/
+Package.resolved
+
+# Node.js / Next.js
+node_modules/
+.next/
+out/
+.vercel
+
+# Logs
+*.log
+npm-debug.log*
+
+# Temporary staging
+*.tmp
+/tmp/

@@ -1,0 +1,103 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@property --beam-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: true;
+}
+
+@property --beam-opacity {
+  syntax: "<number>";
+  initial-value: 0;
+  inherits: true;
+}
+
+:root {
+  --background: #090a0f;
+  --foreground: #ededed;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Rotating Beam Badge */
+.beam-container {
+  position: relative;
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.beam-container::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  padding: 1px;
+  background: conic-gradient(
+    from var(--beam-angle, 0deg),
+    transparent 0%,
+    transparent 54%,
+    rgba(255, 255, 255, 0.1) 57%,
+    rgba(255, 255, 255, 0.4) 60%,
+    rgba(255, 255, 255, 0.8) 65%,
+    rgba(99, 102, 241, 0.9) 68%,
+    rgba(255, 255, 255, 0.4) 72%,
+    rgba(255, 255, 255, 0.1) 75%,
+    transparent 78%,
+    transparent 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  animation: beam-spin 2.5s linear infinite;
+}
+
+@keyframes beam-spin {
+  to {
+    --beam-angle: 360deg;
+  }
+}
+
+/* Glassmorphism panel styles */
+.glass-panel {
+  background: rgba(18, 20, 29, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(99, 102, 241, 0.3);
+  transform: translateY(-2px);
+}
+
+/* Subtle scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
