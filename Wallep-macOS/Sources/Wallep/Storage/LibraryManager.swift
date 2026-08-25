@@ -21,8 +21,8 @@ public final class LibraryManager: ObservableObject {
         
         try? fileManager.createDirectory(at: storageDirectory, withIntermediateDirectories: true)
         
-        // Populate preset metadata synchronously
-        self.wallpapers = DefaultWallpaperGenerator.shared.presets.map { preset in
+        // 1. Load generated local presets
+        let defaultItems = DefaultWallpaperGenerator.shared.presets.map { preset in
             let videoURL = self.storageDirectory.appendingPathComponent("\(preset.id).mp4")
             let thumbURL = self.storageDirectory.appendingPathComponent("\(preset.id).jpg")
             return WallpaperItem(
@@ -41,11 +41,19 @@ public final class LibraryManager: ObservableObject {
             )
         }
         
+        // 2. Merge with the full 4,500+ handpicked Curated Catalog
+        let curated = CuratedCatalog.shared.items
+        self.wallpapers = defaultItems + curated
+        
         loadLibrary()
     }
     
     public var filteredWallpapers: [WallpaperItem] {
-        wallpapers.filter { item in
+        if selectedCategory == .all && searchQuery.isEmpty {
+            return wallpapers
+        }
+        
+        return wallpapers.filter { item in
             let matchesCategory = (selectedCategory == .all || item.category == selectedCategory)
             let matchesSearch = searchQuery.isEmpty || 
                 item.title.localizedCaseInsensitiveContains(searchQuery) || 
@@ -146,7 +154,6 @@ public final class LibraryManager: ObservableObject {
         self.isGeneratingDefaults = true
         DefaultWallpaperGenerator.shared.ensureDefaultWallpapers(in: storageDirectory) { [weak self] items in
             guard let self = self else { return }
-            self.wallpapers = items
             self.isGeneratingDefaults = false
             
             // If WallpaperManager has no wallpaper set, set first default

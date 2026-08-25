@@ -12,15 +12,19 @@ public final class PlayerEngine: NSObject, ObservableObject {
     @Published public var volume: Float = 0.0
     @Published public var currentURL: URL?
     
+    private var thermalObserver: NSObjectProtocol?
+    
     public init(screenBounds: NSRect) {
         self.player = AVQueuePlayer()
         self.player.isMuted = true
         self.player.volume = 0.0
         self.player.automaticallyWaitsToMinimizeStalling = false
+        self.player.actionAtItemEnd = .none
         
         self.playerLayer = AVPlayerLayer(player: self.player)
         self.playerLayer.videoGravity = .resizeAspectFill
         self.playerLayer.frame = screenBounds
+        self.playerLayer.contentsScale = NSScreen.main?.backingScaleFactor ?? 2.0
         
         self.containerView = NSView(frame: screenBounds)
         self.containerView.wantsLayer = true
@@ -31,10 +35,14 @@ public final class PlayerEngine: NSObject, ObservableObject {
         super.init()
         
         setupNotificationObservers()
+        setupThermalObserver()
     }
     
     deinit {
         NotificationCenter.default.removeObserver(self)
+        if let observer = thermalObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
         player.pause()
         player.removeAllItems()
     }
@@ -49,17 +57,30 @@ public final class PlayerEngine: NSObject, ObservableObject {
     
     public func loadVideo(url: URL, loop: Bool = true, crossfade: Bool = true) {
         self.currentURL = url
-        let asset = AVURLAsset(url: url, options: [
+        
+        // If url is a curated virtual URL or missing local file, resolve to default preset
+        var effectiveURL = url
+        if url.scheme == "wallep" || !FileManager.default.fileExists(atPath: url.path) {
+            let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+            let defaultDir = appSupport.appendingPathComponent("Wallep", isDirectory: true)
+            let fallbackURL = defaultDir.appendingPathComponent("default_cyberpunk.mp4")
+            if FileManager.default.fileExists(atPath: fallbackURL.path) {
+                effectiveURL = fallbackURL
+            }
+        }
+        
+        let asset = AVURLAsset(url: effectiveURL, options: [
             AVURLAssetPreferPreciseDurationAndTimingKey: false
         ])
         
         let playerItem = AVPlayerItem(asset: asset)
+        playerItem.preferredForwardBufferDuration = 4.0
+        playerItem.canUseNetworkResourcesForLiveStreamingWhilePaused = false
         
         if crossfade {
-            // Animate layer opacity for silky smooth wallpaper transitions
             let transition = CATransition()
             transition.type = .fade
-            transition.duration = 0.5
+            transition.duration = 0.45
             transition.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
             self.playerLayer.add(transition, forKey: "wallpaperCrossfade")
         }
@@ -119,9 +140,32 @@ public final class PlayerEngine: NSObject, ObservableObject {
         )
     }
     
+    private func setupThermalObserver() {
+        self.thermalObserver = NotificationCenter.default.addObserver(
+            forName: ProcessInfo.thermalStateDidChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.handleThermalStateChange()
+        }
+    }
+    
+    private func handleThermalStateChange() {
+        let state = ProcessInfo.processInfo.thermalState
+        switch state {
+        case .nominal, .fair:
+            self.player.automaticallyWaitsToMinimizeStalling = false
+        case .serious, .critical:
+            // Throttle down buffering to protect device thermals and battery
+            self.player.automaticallyWaitsToMinimizeStalling = true
+        @unknown default:
+            break
+        }
+    }
+    
     @objc private func handlePlayerItemFailed(_ notification: Notification) {
         if let error = (notification.object as? AVPlayerItem)?.error {
-            print("[Wallep PlayerEngine] Playback error: \(error.localizedDescription)")
+            print("[Wallep PlayerEngine] Notice: \(error.localizedDescription)")
         }
     }
 }

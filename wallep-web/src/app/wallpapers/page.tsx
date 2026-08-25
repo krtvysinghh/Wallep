@@ -142,10 +142,10 @@ export default function WallpapersGalleryPage() {
               <span>Curated 4K HDR Catalog</span>
             </div>
             <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-white mb-2">
-              Browse 2700+ Live Wallpapers
+              Browse 5,000+ Live Wallpapers
             </h1>
             <p className="text-xs sm:text-sm text-white/50">
-              Native resolution, color-graded, zero-stutter 60 FPS video loops for your Mac.
+              Native 4K & 5K Retina, color-graded, zero-stutter 60/120 FPS ProMotion video loops for your Mac.
             </p>
           </div>
 
