@@ -2,25 +2,50 @@ import SwiftUI
 import AppKit
 
 public final class AppDelegate: NSObject, NSApplicationDelegate {
+    public static var mainWindow: NSWindow?
+    
     public func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
-        NSApp.activate(ignoringOtherApps: true)
-        
-        // Show main window on launch
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            if let window = NSApplication.shared.windows.first(where: { $0.title == "Wallep" || $0.identifier?.rawValue == "main-window" }) {
-                window.makeKeyAndOrderFront(nil)
-            }
+            AppDelegate.showMainWindow()
         }
     }
     
-    public func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if !flag {
-            for window in sender.windows where !(window is WallpaperWindow) {
-                window.makeKeyAndOrderFront(nil)
-                return true
-            }
+    public static func showMainWindow() {
+        if let win = mainWindow, win.isVisible {
+            win.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
         }
+        
+        if let existing = NSApplication.shared.windows.first(where: { 
+            !($0 is WallpaperWindow) && $0.className != "NSStatusBarWindow" && $0.level == .normal 
+        }) {
+            mainWindow = existing
+            existing.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+        
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 1100, height: 740),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "Wallep"
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.center()
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: MainAppView())
+        mainWindow = window
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+    
+    public func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        AppDelegate.showMainWindow()
         return true
     }
     
