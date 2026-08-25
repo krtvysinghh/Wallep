@@ -1,31 +1,58 @@
+import Cocoa
 import SwiftUI
-import AppKit
 
-public final class AppDelegate: NSObject, NSApplicationDelegate {
-    public static var mainWindow: NSWindow?
+public final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
+    public static var shared: AppDelegate?
+    
+    public var statusItem: NSStatusItem?
+    public var statusPopover: NSPopover?
+    public var mainWindow: NSWindow?
     
     public func applicationDidFinishLaunching(_ notification: Notification) {
+        AppDelegate.shared = self
+        
+        // Ensure regular foreground application activation
         NSApp.setActivationPolicy(.regular)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            AppDelegate.showMainWindow()
+        
+        // Initialize wallpaper windows
+        _ = WallpaperManager.shared
+        
+        // Setup status bar item
+        setupStatusBarItem()
+        
+        // Create and show main window
+        setupMainWindow()
+        AppDelegate.showMainWindow()
+    }
+    
+    private func setupStatusBarItem() {
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        if let button = item.button {
+            button.image = NSImage(systemSymbolName: "sparkles.rectangle.stack.fill", accessibilityDescription: "Wallep")
+            button.target = self
+            button.action = #selector(togglePopover(_:))
+        }
+        self.statusItem = item
+        
+        let popover = NSPopover()
+        popover.contentSize = NSSize(width: 320, height: 420)
+        popover.behavior = .transient
+        popover.contentViewController = NSHostingController(rootView: MenuBarView())
+        self.statusPopover = popover
+    }
+    
+    @objc public func togglePopover(_ sender: AnyObject?) {
+        guard let button = statusItem?.button, let popover = statusPopover else { return }
+        if popover.isShown {
+            popover.performClose(sender)
+        } else {
+            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            popover.contentViewController?.view.window?.makeKey()
         }
     }
     
-    public static func showMainWindow() {
-        if let win = mainWindow, win.isVisible {
-            win.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
-            return
-        }
-        
-        if let existing = NSApplication.shared.windows.first(where: { 
-            !($0 is WallpaperWindow) && $0.className != "NSStatusBarWindow" && $0.level == .normal 
-        }) {
-            mainWindow = existing
-            existing.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
-            return
-        }
+    public func setupMainWindow() {
+        if mainWindow != nil { return }
         
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1100, height: 740),
@@ -38,51 +65,54 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         window.titleVisibility = .hidden
         window.center()
         window.isReleasedWhenClosed = false
+        window.delegate = self
         window.contentView = NSHostingView(rootView: MainAppView())
-        mainWindow = window
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        self.mainWindow = window
     }
     
+    public static func showMainWindow(tab: ActiveTab? = nil) {
+        if let t = tab {
+            AppState.shared.activeTab = t
+        }
+        guard let delegate = AppDelegate.shared else { return }
+        if delegate.mainWindow == nil {
+            delegate.setupMainWindow()
+        }
+        if let win = delegate.mainWindow {
+            win.makeKeyAndOrderFront(nil)
+            win.center()
+            NSApp.activate(ignoringOtherApps: true)
+        }
+    }
+    
+    // When red close button is clicked, hide window instead of destroying it
+    public func windowShouldClose(_ sender: NSWindow) -> Bool {
+        sender.orderOut(nil)
+        return false
+    }
+    
+    // When clicking Dock icon, show main window
     public func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         AppDelegate.showMainWindow()
         return true
     }
     
     public func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        // Keep running in background / MenuBar even if main window is closed
         return false
     }
 }
 
+// App Entrypoint
 @main
-public struct WallepApp: App {
-    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    @StateObject private var appState = AppState.shared
-    
-    public init() {
+public struct MainEntryPoint {
+    public static func main() {
         if CLIHandler.handle(arguments: CommandLine.arguments) {
             exit(0)
         }
-        // Initialize wallpaper windows
-        _ = WallpaperManager.shared
-    }
-    
-    public var body: some Scene {
-        // MenuBar status item
-        MenuBarExtra("Wallep", systemImage: "sparkles.rectangle.stack.fill") {
-            MenuBarView()
-        }
-        .menuBarExtraStyle(.window)
         
-        // Main Window (Gallery, Studio, Settings)
-        Window("Wallep", id: "main-window") {
-            MainAppView()
-                .onAppear {
-                    NSApp.activate(ignoringOtherApps: true)
-                }
-        }
-        .windowStyle(.hiddenTitleBar)
-        .defaultSize(width: 1080, height: 720)
+        let app = NSApplication.shared
+        let delegate = AppDelegate()
+        app.delegate = delegate
+        app.run()
     }
 }

@@ -184,22 +184,7 @@ public struct MenuBarView: View {
     }
     
     private func openFullWindow(tab: ActiveTab) {
-        appState.activeTab = tab
-        if let window = NSApplication.shared.windows.first(where: { $0.title == "Wallep" }) {
-            window.makeKeyAndOrderFront(nil)
-            NSApplication.shared.activate(ignoringOtherApps: true)
-        } else {
-            let win = NSWindow(
-                contentRect: NSRect(x: 100, y: 100, width: 1080, height: 720),
-                styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
-                backing: .buffered,
-                defer: false
-            )
-            win.title = "Wallep"
-            win.center()
-            win.contentView = NSHostingView(rootView: MainAppView())
-            win.makeKeyAndOrderFront(nil)
-            NSApplication.shared.activate(ignoringOtherApps: true)
-        }
+        AppDelegate.shared?.statusPopover?.performClose(nil)
+        AppDelegate.showMainWindow(tab: tab)
     }
 }
