@@ -2,19 +2,32 @@ import Cocoa
 import AVFoundation
 
 public final class WallpaperWindow: NSWindow {
-    public let targetScreen: NSScreen
+    public var targetScreen: NSScreen
     
     public init(screen: NSScreen) {
         self.targetScreen = screen
-        
         super.init(
             contentRect: screen.frame,
             styleMask: [.borderless],
             backing: .buffered,
-            defer: false,
-            screen: screen
+            defer: false
         )
-        
+        setupWindowAttributes()
+    }
+    
+    override public init(
+        contentRect: NSRect,
+        styleMask style: NSWindow.StyleMask,
+        backing backingStoreType: NSWindow.BackingStoreType,
+        defer flag: Bool
+    ) {
+        self.targetScreen = NSScreen.main ?? (NSScreen.screens.first ?? NSScreen())
+        super.init(
+            contentRect: contentRect,
+            styleMask: [.borderless],
+            backing: backingStoreType,
+            defer: flag
+        )
         setupWindowAttributes()
     }
     
@@ -49,6 +62,7 @@ public final class WallpaperWindow: NSWindow {
     override public var canBecomeMain: Bool { false }
     
     public func updateFrame(for screen: NSScreen) {
+        self.targetScreen = screen
         self.setFrame(screen.frame, display: true)
     }
 }
