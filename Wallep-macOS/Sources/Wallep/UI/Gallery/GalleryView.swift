@@ -1,13 +1,14 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 public struct GalleryView: View {
     @ObservedObject var library = LibraryManager.shared
     @ObservedObject var appState = AppState.shared
     @State private var hoveredItemId: String? = nil
-    @State private var showImportDialog: Bool = false
+    @State private var isDragTargeted: Bool = false
     
     let columns = [
-        GridItem(.adaptive(minimum: 280, maximum: 360), spacing: 20)
+        GridItem(.adaptive(minimum: 290, maximum: 380), spacing: 20)
     ]
     
     public init() {}
@@ -20,7 +21,7 @@ public struct GalleryView: View {
                 HStack {
                     Image(systemName: "magnifyingglass")
                         .foregroundColor(.secondary)
-                    TextField("Search 2700+ 4K wallpapers...", text: $library.searchQuery)
+                    TextField("Search 4K wallpapers...", text: $library.searchQuery)
                         .textFieldStyle(.plain)
                     if !library.searchQuery.isEmpty {
                         Button(action: { library.searchQuery = "" }) {
@@ -39,12 +40,10 @@ public struct GalleryView: View {
                 Spacer()
                 
                 // Import Custom Video Button
-                Button(action: {
-                    selectCustomVideo()
-                }) {
+                Button(action: selectCustomVideo) {
                     HStack(spacing: 6) {
                         Image(systemName: "plus.rectangle.fill.on.rectangle.fill")
-                        Text("Import Custom Video")
+                        Text("Import Video")
                     }
                     .font(.subheadline)
                     .fontWeight(.medium)
@@ -93,29 +92,63 @@ public struct GalleryView: View {
             
             Divider()
             
-            // Wallpapers Grid
-            ScrollView {
-                LazyVGrid(columns: columns, spacing: 24) {
-                    ForEach(library.filteredWallpapers) { wallpaper in
-                        WallpaperCard(
-                            wallpaper: wallpaper,
-                            isHovered: hoveredItemId == wallpaper.id,
-                            isCurrentlyActive: appState.wallpaperManager.currentWallpaper?.id == wallpaper.id,
-                            onSelect: {
-                                appState.selectWallpaper(wallpaper)
-                            },
-                            onToggleFavorite: {
-                                library.toggleFavorite(for: wallpaper.id)
-                            }
-                        )
-                        .onHover { hovering in
-                            withAnimation(.easeInOut(duration: 0.15)) {
-                                self.hoveredItemId = hovering ? wallpaper.id : nil
+            // Wallpapers Grid & Drag Drop Area
+            ZStack {
+                if library.isGeneratingDefaults && library.wallpapers.isEmpty {
+                    VStack(spacing: 12) {
+                        ProgressView()
+                            .controlSize(.large)
+                        Text("Preparing native 4K live wallpapers...")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollView {
+                        LazyVGrid(columns: columns, spacing: 24) {
+                            ForEach(library.filteredWallpapers) { wallpaper in
+                                WallpaperCard(
+                                    wallpaper: wallpaper,
+                                    isHovered: hoveredItemId == wallpaper.id,
+                                    isCurrentlyActive: appState.wallpaperManager.currentWallpaper?.id == wallpaper.id,
+                                    onSelect: {
+                                        appState.selectWallpaper(wallpaper)
+                                    },
+                                    onToggleFavorite: {
+                                        library.toggleFavorite(for: wallpaper.id)
+                                    }
+                                )
+                                .onHover { hovering in
+                                    withAnimation(.easeInOut(duration: 0.15)) {
+                                        self.hoveredItemId = hovering ? wallpaper.id : nil
+                                    }
+                                }
                             }
                         }
+                        .padding(24)
                     }
                 }
-                .padding(24)
+                
+                // Drag and Drop Overlay
+                if isDragTargeted {
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color.indigo, style: StrokeStyle(lineWidth: 3, dash: [8]))
+                        .background(Color.indigo.opacity(0.15))
+                        .padding(16)
+                        .overlay(
+                            VStack(spacing: 8) {
+                                Image(systemName: "arrow.down.doc.fill")
+                                    .font(.system(size: 44))
+                                    .foregroundColor(.indigo)
+                                Text("Drop video to import as Live Wallpaper")
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                            }
+                        )
+                }
+            }
+            .onDrop(of: [.fileURL], isTargeted: $isDragTargeted) { providers in
+                handleDrop(providers: providers)
             }
         }
         .background(Color(NSColor.windowBackgroundColor))
@@ -134,6 +167,21 @@ public struct GalleryView: View {
             }
         }
     }
+    
+    private func handleDrop(providers: [NSItemProvider]) -> Bool {
+        guard let provider = providers.first else { return false }
+        provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, _ in
+            guard let data = item as? Data,
+                  let url = URL(dataRepresentation: data, relativeTo: nil) else { return }
+            
+            DispatchQueue.main.async {
+                if let imported = library.importCustomVideo(at: url) {
+                    appState.selectWallpaper(imported)
+                }
+            }
+        }
+        return true
+    }
 }
 
 public struct WallpaperCard: View {
@@ -146,17 +194,25 @@ public struct WallpaperCard: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             ZStack(alignment: .topTrailing) {
-                // Background thumbnail / mockup
+                // Background thumbnail / image
                 ZStack(alignment: .bottomLeading) {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.indigo.opacity(0.6), Color.purple.opacity(0.8), Color.black],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
+                    if !wallpaper.thumbnailURL.isEmpty, let nsImg = NSImage(contentsOfFile: wallpaper.thumbnailURL) {
+                        Image(nsImage: nsImg)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(height: 180)
+                            .clipped()
+                    } else {
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color.indigo.opacity(0.6), Color.purple.opacity(0.8), Color.black],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
                             )
-                        )
-                        .frame(height: 180)
+                            .frame(height: 180)
+                    }
                     
                     // Live Indicator & Resolution Tag
                     HStack {
@@ -191,7 +247,7 @@ public struct WallpaperCard: View {
                     Image(systemName: wallpaper.isFavorite ? "heart.fill" : "heart")
                         .foregroundColor(wallpaper.isFavorite ? .red : .white)
                         .padding(8)
-                        .background(Color.black.opacity(0.4))
+                        .background(Color.black.opacity(0.5))
                         .clipShape(Circle())
                 }
                 .buttonStyle(.plain)
@@ -220,7 +276,7 @@ public struct WallpaperCard: View {
                 Spacer()
                 
                 Button(action: onSelect) {
-                    Text(isCurrentlyActive ? "Set" : "Apply")
+                    Text(isCurrentlyActive ? "Active" : "Apply")
                         .font(.subheadline)
                         .fontWeight(.semibold)
                         .padding(.horizontal, 14)

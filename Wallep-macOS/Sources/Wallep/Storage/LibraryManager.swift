@@ -1,5 +1,7 @@
 import Foundation
 import Combine
+import AVFoundation
+import Cocoa
 
 public final class LibraryManager: ObservableObject {
     public static let shared = LibraryManager()
@@ -7,6 +9,7 @@ public final class LibraryManager: ObservableObject {
     @Published public var wallpapers: [WallpaperItem] = []
     @Published public var selectedCategory: WallpaperCategory = .all
     @Published public var searchQuery: String = ""
+    @Published public var isGeneratingDefaults: Bool = false
     
     public let storageDirectory: URL
     private let allowedExtensions = Set(["mp4", "mov", "m4v", "webm"])
@@ -17,7 +20,28 @@ public final class LibraryManager: ObservableObject {
         self.storageDirectory = appSupport.appendingPathComponent("Wallep", isDirectory: true)
         
         try? fileManager.createDirectory(at: storageDirectory, withIntermediateDirectories: true)
-        loadDefaultLibrary()
+        
+        // Populate preset metadata synchronously
+        self.wallpapers = DefaultWallpaperGenerator.shared.presets.map { preset in
+            let videoURL = self.storageDirectory.appendingPathComponent("\(preset.id).mp4")
+            let thumbURL = self.storageDirectory.appendingPathComponent("\(preset.id).jpg")
+            return WallpaperItem(
+                id: preset.id,
+                title: preset.title,
+                category: preset.category,
+                resolution: "3840x2160 (Native 4K)",
+                duration: 6.0,
+                fileSize: "12.4MB",
+                thumbnailURL: thumbURL.path,
+                videoURL: videoURL,
+                author: preset.author,
+                likes: preset.likes,
+                isFavorite: true,
+                isCustom: false
+            )
+        }
+        
+        loadLibrary()
     }
     
     public var filteredWallpapers: [WallpaperItem] {
@@ -30,16 +54,18 @@ public final class LibraryManager: ObservableObject {
         }
     }
     
-    public func importCustomVideo(at sourceURL: URL, title: String? = nil, category: WallpaperCategory = .abstract) -> WallpaperItem? {
+    public func importCustomVideo(at sourceURL: URL, title: String? = nil, category: WallpaperCategory = .abstract, completion: ((WallpaperItem?) -> Void)? = nil) -> WallpaperItem? {
         let ext = sourceURL.pathExtension.lowercased()
         guard allowedExtensions.contains(ext) else {
             print("[Wallep] Disallowed file extension: .\(ext)")
+            completion?(nil)
             return nil
         }
         
-        // Sanitize file name to prevent path traversal
-        let sanitizedName = UUID().uuidString + "_" + sourceURL.lastPathComponent.replacingOccurrences(of: "..", with: "")
+        let fileUUID = UUID().uuidString
+        let sanitizedName = fileUUID + "_" + sourceURL.lastPathComponent.replacingOccurrences(of: "..", with: "")
         let destURL = storageDirectory.appendingPathComponent(sanitizedName)
+        let thumbURL = storageDirectory.appendingPathComponent("\(fileUUID)_thumb.jpg")
         
         do {
             if FileManager.default.fileExists(atPath: destURL.path) {
@@ -47,17 +73,50 @@ public final class LibraryManager: ObservableObject {
             }
             try FileManager.default.copyItem(at: sourceURL, to: destURL)
             
+            // Extract accurate video metadata
+            let asset = AVURLAsset(url: destURL)
+            let durationSeconds = CMTimeGetSeconds(asset.duration)
+            
+            var resString = "3840x2160 (Native 4K)"
+            if let track = asset.tracks(withMediaType: .video).first {
+                let size = track.naturalSize.applying(track.preferredTransform)
+                let w = Int(abs(size.width))
+                let h = Int(abs(size.height))
+                resString = "\(w)x\(h)"
+                if w >= 3840 || h >= 2160 {
+                    resString += " (4K UHD)"
+                } else if w >= 2560 || h >= 1440 {
+                    resString += " (2K QHD)"
+                } else if w >= 1920 || h >= 1080 {
+                    resString += " (1080p FHD)"
+                }
+            }
+            
             let fileAttrs = try? FileManager.default.attributesOfItem(atPath: destURL.path)
             let rawBytes = (fileAttrs?[.size] as? NSNumber)?.int64Value ?? 0
-            let mb = Double(rawBytes) / (1024.0 * 1024.0)
-
+            let mb = max(0.1, Double(rawBytes) / (1024.0 * 1024.0))
+            
+            // Generate visual thumbnail frame
+            let generator = AVAssetImageGenerator(asset: asset)
+            generator.appliesPreferredTrackTransform = true
+            generator.maximumSize = CGSize(width: 640, height: 360)
+            
+            let time = CMTime(seconds: min(1.0, durationSeconds / 2), preferredTimescale: 600)
+            if let cgImg = try? generator.copyCGImage(at: time, actualTime: nil) {
+                let rep = NSBitmapImageRep(cgImage: cgImg)
+                if let jpg = rep.representation(using: .jpeg, properties: [:]) {
+                    try? jpg.write(to: thumbURL)
+                }
+            }
+            
             let item = WallpaperItem(
+                id: fileUUID,
                 title: title ?? sourceURL.deletingPathExtension().lastPathComponent,
                 category: category,
-                resolution: "Custom (Native 4K)",
-                duration: 45.0,
+                resolution: resString,
+                duration: durationSeconds > 0 ? durationSeconds : 45.0,
                 fileSize: "\(String(format: "%.1f", mb))MB",
-                thumbnailURL: "",
+                thumbnailURL: FileManager.default.fileExists(atPath: thumbURL.path) ? thumbURL.path : "",
                 videoURL: destURL,
                 author: "Local Import",
                 likes: 0,
@@ -65,16 +124,14 @@ public final class LibraryManager: ObservableObject {
                 isCustom: true
             )
             
-            if Thread.isMainThread {
+            DispatchQueue.main.async {
                 self.wallpapers.insert(item, at: 0)
-            } else {
-                DispatchQueue.main.sync {
-                    self.wallpapers.insert(item, at: 0)
-                }
+                completion?(item)
             }
             return item
         } catch {
             print("[Wallep] Failed to securely import video: \(error.localizedDescription)")
+            completion?(nil)
             return nil
         }
     }
@@ -85,81 +142,17 @@ public final class LibraryManager: ObservableObject {
         }
     }
     
-    private func loadDefaultLibrary() {
-        let sampleCatalog: [WallpaperItem] = [
-            WallpaperItem(
-                id: "sample_01",
-                title: "Cat in Rain (Lo-Fi Cozy)",
-                category: .anime,
-                resolution: "3840x2160 (4K)",
-                duration: 90.0,
-                fileSize: "25MB",
-                thumbnailURL: "/images/wallpapers/cat_rain.jpg",
-                videoURL: URL(string: "https://assets.mixkit.co/videos/preview/mixkit-cat-looking-out-the-window-in-the-rain-41551-large.mp4")!,
-                author: "Studio Ghibli Vibes",
-                likes: 441
-            ),
-            WallpaperItem(
-                id: "sample_02",
-                title: "Orchid in the Rain",
-                category: .nature,
-                resolution: "3840x2160 (4K UHD)",
-                duration: 120.0,
-                fileSize: "40MB",
-                thumbnailURL: "/images/wallpapers/orchid.jpg",
-                videoURL: URL(string: "https://assets.mixkit.co/videos/preview/mixkit-rain-falling-on-the-leaves-of-a-plant-41552-large.mp4")!,
-                author: "Wallep Nature Lab",
-                likes: 456
-            ),
-            WallpaperItem(
-                id: "sample_03",
-                title: "Cyberpunk Neo Tokyo",
-                category: .cyberpunk,
-                resolution: "3840x2160 (4K HDR)",
-                duration: 75.0,
-                fileSize: "48MB",
-                thumbnailURL: "/images/wallpapers/cyberpunk.jpg",
-                videoURL: URL(string: "https://assets.mixkit.co/videos/preview/mixkit-futuristic-city-with-flying-cars-and-skyscrapers-41553-large.mp4")!,
-                author: "Neon Dreams",
-                likes: 1289
-            ),
-            WallpaperItem(
-                id: "sample_04",
-                title: "Porsche GT3 High Speed Run",
-                category: .cars,
-                resolution: "3840x2160 (4K 60FPS)",
-                duration: 45.0,
-                fileSize: "30MB",
-                thumbnailURL: "/images/wallpapers/porsche.jpg",
-                videoURL: URL(string: "https://assets.mixkit.co/videos/preview/mixkit-driving-on-a-highway-at-sunset-41554-large.mp4")!,
-                author: "Apex Velocity",
-                likes: 890
-            ),
-            WallpaperItem(
-                id: "sample_05",
-                title: "Deep Cosmos Nebula Loop",
-                category: .space,
-                resolution: "3840x2160 (4K)",
-                duration: 180.0,
-                fileSize: "62MB",
-                thumbnailURL: "/images/wallpapers/nebula.jpg",
-                videoURL: URL(string: "https://assets.mixkit.co/videos/preview/mixkit-flying-through-a-starfield-in-space-41555-large.mp4")!,
-                author: "Interstellar",
-                likes: 673
-            ),
-            WallpaperItem(
-                id: "sample_06",
-                title: "Minimalist Aurora Borealis",
-                category: .minimalist,
-                resolution: "3840x2160 (4K)",
-                duration: 95.0,
-                fileSize: "28MB",
-                thumbnailURL: "/images/wallpapers/aurora.jpg",
-                videoURL: URL(string: "https://assets.mixkit.co/videos/preview/mixkit-northern-lights-over-a-snowy-forest-41556-large.mp4")!,
-                author: "Nordic Ambient",
-                likes: 512
-            )
-        ]
-        self.wallpapers = sampleCatalog
+    private func loadLibrary() {
+        self.isGeneratingDefaults = true
+        DefaultWallpaperGenerator.shared.ensureDefaultWallpapers(in: storageDirectory) { [weak self] items in
+            guard let self = self else { return }
+            self.wallpapers = items
+            self.isGeneratingDefaults = false
+            
+            // If WallpaperManager has no wallpaper set, set first default
+            if WallpaperManager.shared.currentWallpaper == nil, let first = items.first {
+                WallpaperManager.shared.setWallpaper(first)
+            }
+        }
     }
 }
