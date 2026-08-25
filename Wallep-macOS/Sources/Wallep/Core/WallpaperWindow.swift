@@ -4,14 +4,14 @@ import AVFoundation
 public final class WallpaperWindow: NSWindow {
     public var targetScreen: NSScreen
     
-    public init(screen: NSScreen) {
-        self.targetScreen = screen
-        super.init(
+    public convenience init(screen: NSScreen) {
+        self.init(
             contentRect: screen.frame,
             styleMask: [.borderless],
             backing: .buffered,
             defer: false
         )
+        self.targetScreen = screen
         setupWindowAttributes()
     }
     
