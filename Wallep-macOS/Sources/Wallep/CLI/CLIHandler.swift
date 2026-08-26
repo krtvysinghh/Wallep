@@ -29,8 +29,11 @@ public struct CLIHandler {
         case "list":
             let library = LibraryManager.shared
             print("Available 4K Wallpapers (\(library.wallpapers.count)):")
-            for item in library.wallpapers {
+            for item in library.wallpapers.prefix(100) {
                 print("  • [\(item.id)] \(item.title) (\(item.category.rawValue)) - \(item.resolution)")
+            }
+            if library.wallpapers.count > 100 {
+                print("  ... and \(library.wallpapers.count - 100) more wallpapers.")
             }
             return true
             
@@ -44,8 +47,44 @@ public struct CLIHandler {
             }
             return true
             
+        case "pause":
+            WallpaperManager.shared.pauseAll()
+            print("Wallep playback paused.")
+            return true
+            
+        case "resume":
+            WallpaperManager.shared.resumeAll()
+            print("Wallep playback resumed.")
+            return true
+            
+        case "set":
+            guard arguments.count > 2 else {
+                print("Error: Missing wallpaper ID or file path. Usage: wallep set <id_or_path>")
+                return true
+            }
+            let target = arguments[2]
+            let library = LibraryManager.shared
+            if let matched = library.wallpapers.first(where: { $0.id == target || $0.title.localizedCaseInsensitiveContains(target) }) {
+                WallpaperManager.shared.setWallpaper(matched)
+                print("Applied wallpaper: \(matched.title) (\(matched.id))")
+            } else {
+                let fileURL = URL(fileURLWithPath: target)
+                if FileManager.default.fileExists(atPath: fileURL.path) {
+                    if let custom = library.importCustomVideo(at: fileURL) {
+                        WallpaperManager.shared.setWallpaper(custom)
+                        print("Imported and applied: \(custom.title)")
+                    } else {
+                        print("Error: Could not import file at \(target)")
+                    }
+                } else {
+                    print("Error: Wallpaper ID or file not found: \(target)")
+                }
+            }
+            return true
+            
         default:
-            return false
+            print("Unknown command: '\(command)'. Run 'wallep --help' for usage.")
+            return true
         }
     }
 }

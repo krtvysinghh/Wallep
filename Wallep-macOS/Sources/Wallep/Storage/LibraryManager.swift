@@ -71,7 +71,8 @@ public final class LibraryManager: ObservableObject {
         }
         
         let fileUUID = UUID().uuidString
-        let sanitizedName = fileUUID + "_" + sourceURL.lastPathComponent.replacingOccurrences(of: "..", with: "")
+        let rawFileName = sourceURL.lastPathComponent.replacingOccurrences(of: "..", with: "").replacingOccurrences(of: "/", with: "")
+        let sanitizedName = "\(fileUUID)_\(rawFileName)"
         let destURL = storageDirectory.appendingPathComponent(sanitizedName)
         let thumbURL = storageDirectory.appendingPathComponent("\(fileUUID)_thumb.jpg")
         
@@ -81,24 +82,35 @@ public final class LibraryManager: ObservableObject {
             }
             try FileManager.default.copyItem(at: sourceURL, to: destURL)
             
-            // Extract accurate video metadata
+            // Extract accurate video metadata safely
             let asset = AVURLAsset(url: destURL)
-            let durationSeconds = CMTimeGetSeconds(asset.duration)
-            
+            var durationSeconds: Double = 45.0
             var resString = "3840x2160 (Native 4K)"
-            if let track = asset.tracks(withMediaType: .video).first {
-                let size = track.naturalSize.applying(track.preferredTransform)
-                let w = Int(abs(size.width))
-                let h = Int(abs(size.height))
-                resString = "\(w)x\(h)"
-                if w >= 3840 || h >= 2160 {
-                    resString += " (4K UHD)"
-                } else if w >= 2560 || h >= 1440 {
-                    resString += " (2K QHD)"
-                } else if w >= 1920 || h >= 1080 {
-                    resString += " (1080p FHD)"
+            
+            let semaphore = DispatchSemaphore(value: 0)
+            Task {
+                if let dur = try? await asset.load(.duration) {
+                    durationSeconds = CMTimeGetSeconds(dur)
                 }
+                if let tracks = try? await asset.loadTracks(withMediaType: .video), let track = tracks.first {
+                    if let size = try? await track.load(.naturalSize), let transform = try? await track.load(.preferredTransform) {
+                        let transformed = size.applying(transform)
+                        let w = Int(abs(transformed.width))
+                        let h = Int(abs(transformed.height))
+                        var res = "\(w)x\(h)"
+                        if w >= 3840 || h >= 2160 {
+                            res += " (4K UHD)"
+                        } else if w >= 2560 || h >= 1440 {
+                            res += " (2K QHD)"
+                        } else if w >= 1920 || h >= 1080 {
+                            res += " (1080p FHD)"
+                        }
+                        resString = res
+                    }
+                }
+                semaphore.signal()
             }
+            _ = semaphore.wait(timeout: .now() + 1.0)
             
             let fileAttrs = try? FileManager.default.attributesOfItem(atPath: destURL.path)
             let rawBytes = (fileAttrs?[.size] as? NSNumber)?.int64Value ?? 0

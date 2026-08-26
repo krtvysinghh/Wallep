@@ -7,14 +7,26 @@ let package = Package(
         .macOS(.v14)
     ],
     products: [
-        .executable(name: "wallep", targets: ["Wallep"])
+        .executable(name: "wallep", targets: ["WallepApp"]),
+        .executable(name: "wallep-tests", targets: ["WallepUnitTests"]),
+        .library(name: "WallepKit", targets: ["WallepKit"])
     ],
     dependencies: [],
     targets: [
-        .executableTarget(
-            name: "Wallep",
+        .target(
+            name: "WallepKit",
             dependencies: [],
             path: "Sources/Wallep"
+        ),
+        .executableTarget(
+            name: "WallepApp",
+            dependencies: ["WallepKit"],
+            path: "Sources/WallepApp"
+        ),
+        .executableTarget(
+            name: "WallepUnitTests",
+            dependencies: ["WallepKit"],
+            path: "Sources/WallepUnitTests"
         )
     ]
 )

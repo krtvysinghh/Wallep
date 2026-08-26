@@ -35,7 +35,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegat
         self.statusItem = item
         
         let popover = NSPopover()
-        popover.contentSize = NSSize(width: 320, height: 420)
+        popover.contentSize = NSSize(width: 330, height: 430)
         popover.behavior = .transient
         popover.contentViewController = NSHostingController(rootView: MenuBarView())
         self.statusPopover = popover
@@ -102,8 +102,6 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegat
     }
 }
 
-// App Entrypoint
-@main
 public struct MainEntryPoint {
     public static func main() {
         if CLIHandler.handle(arguments: CommandLine.arguments) {

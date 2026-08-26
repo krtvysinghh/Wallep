@@ -97,9 +97,14 @@ public final class AutoChangeManager: ObservableObject {
             }
         }
         
-        DispatchQueue.main.async {
+        if Thread.isMainThread {
             WallpaperManager.shared.setWallpaper(nextItem)
             self.updateNextChangeTimestamp()
+        } else {
+            DispatchQueue.main.async {
+                WallpaperManager.shared.setWallpaper(nextItem)
+                self.updateNextChangeTimestamp()
+            }
         }
     }
     

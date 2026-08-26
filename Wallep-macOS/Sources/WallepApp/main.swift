@@ -1,0 +1,3 @@
+import WallepKit
+
+MainEntryPoint.main()
