@@ -1,0 +1,20 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  package-and-release:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package App and DMG
+        run: ./create_app_and_dmg.sh
+      - name: Publish Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Wallep.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
