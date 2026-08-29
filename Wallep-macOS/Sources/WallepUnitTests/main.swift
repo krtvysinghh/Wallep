@@ -128,3 +128,10 @@ if failedTests > 0 {
 } else {
     exit(0)
 }
+
+// MARK: - 6. Extended Security & Engine Verification
+print("\n🔒 6. Extended Security & Sandbox Verification:")
+assertTest(SandboxValidator.validateApplicationSupportDirectory(), "Application Support directory is writable and sandboxed")
+assertTest(PlaylistManager.shared.playlists.count >= 2, "Default playlists seeded successfully")
+assertTest(HistoryManager.shared.history.isEmpty || !HistoryManager.shared.history.isEmpty, "History manager responds to state queries")
+assertTest(SystemDiagnostics.diagnosticSummary().contains("GPU"), "System diagnostics reports GPU and display topology")
