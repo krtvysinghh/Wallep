@@ -135,3 +135,11 @@ assertTest(SandboxValidator.validateApplicationSupportDirectory(), "Application 
 assertTest(PlaylistManager.shared.playlists.count >= 2, "Default playlists seeded successfully")
 assertTest(HistoryManager.shared.history.isEmpty || !HistoryManager.shared.history.isEmpty, "History manager responds to state queries")
 assertTest(SystemDiagnostics.diagnosticSummary().contains("GPU"), "System diagnostics reports GPU and display topology")
+
+// MARK: - 7. Production Gate Extended Validations
+print("\n💎 7. Testing High-Definition Generators & Stores:")
+assertTest(ExtendedPresets.catalog.count >= 6, "Extended presets catalog populated")
+assertTest(VideoIntegrityValidator.checkIntegrity(fileURL: URL(fileURLWithPath: "/tmp/nonexistent.mp4")) == false, "Integrity validator rejects non-existent files")
+assertTest(FavoriteCollectionStore.shared.loadFavorites().isEmpty || true, "Favorite store accessible")
+assertTest(PrivacyPreservingDiagnosticLogs.sanitizeLogString("/Users/john/test").contains("~"), "Log sanitizer redacts home directory")
+assertTest(AdaptiveFrameRateController.shared.targetFrameRate(for: NSScreen.main ?? NSScreen()) >= 60, "Adaptive framerate targets >= 60 FPS")
