@@ -22,3 +22,6 @@ Include in your report:
 * **MIME & Extension Whitelist:** Strict whitelisting of approved video containers (`.mp4`, `.mov`, `.m4v`, `.webm`). Executables, shell scripts, and dynamic libraries are unconditionally rejected.
 * **No Root / SIP Requirements:** Wallep operates completely in user space without requiring root privileges or System Integrity Protection (SIP) modifications.
 * **Hardware-Bound Window Leveling:** Desktop canvas is anchored to `kCGDesktopWindowLevel` with mouse event pass-through, preventing click-jacking or UI spoofing.
+
+## Video Integrity & Magic-Byte Validation
+Every custom video imported via drag-and-drop or CLI is inspected via `MIMEValidator` for the ISO Base Media File Format box signature (`ftyp`). Files failing signature checks are rejected before reaching `AVFoundation`.
