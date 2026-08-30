@@ -106,10 +106,10 @@ public final class CuratedCatalog {
         ]
         
         let resolutions = [
-            "3840x2160 (Native 4K UHD)",
+            "7680x4320 (Native 8K Ultra HD)",
+            "6016x3384 (6K Pro Display XDR)",
             "5120x2880 (5K Retina)",
-            "3840x2160 (4K 60FPS HDR)",
-            "3840x2160 (120 FPS ProMotion)"
+            "3840x2160 (4K 120Hz ProMotion)"
         ]
         
         let modifiers = [
