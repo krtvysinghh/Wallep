@@ -6,15 +6,17 @@ public final class PlayerEngine: NSObject, ObservableObject {
     private var playerLooper: AVPlayerLooper?
     public let playerLayer: AVPlayerLayer
     public let containerView: NSView
+    public let screenBounds: NSRect
     
     @Published public var isPlaying: Bool = false
     @Published public var isMuted: Bool = true
     @Published public var volume: Float = 0.0
-    @Published public var currentURL: URL?
+    @Published public var currentItem: WallpaperItem?
     
     private var thermalObserver: NSObjectProtocol?
     
     public init(screenBounds: NSRect) {
+        self.screenBounds = screenBounds
         self.player = AVQueuePlayer()
         self.player.isMuted = true
         self.player.volume = 0.0
@@ -29,7 +31,8 @@ public final class PlayerEngine: NSObject, ObservableObject {
         self.containerView = NSView(frame: screenBounds)
         self.containerView.wantsLayer = true
         self.containerView.layer = CALayer()
-        self.containerView.layer?.backgroundColor = NSColor.black.cgColor
+        self.containerView.layer?.backgroundColor = NSColor(calibratedWhite: 0.05, alpha: 1.0).cgColor
+        self.containerView.layer?.contentsGravity = .resizeAspectFill
         self.containerView.layer?.addSublayer(self.playerLayer)
         
         super.init()
@@ -55,18 +58,48 @@ public final class PlayerEngine: NSObject, ObservableObject {
         CATransaction.commit()
     }
     
-    public func loadVideo(url: URL, loop: Bool = true, crossfade: Bool = true) {
-        self.currentURL = url
+    public func loadWallpaper(_ item: WallpaperItem, loop: Bool = true, crossfade: Bool = true) {
+        self.currentItem = item
         
-        // If url is a curated virtual URL or missing local file, resolve to default preset
-        var effectiveURL = url
-        if url.scheme == "wallep" || !FileManager.default.fileExists(atPath: url.path) {
+        // 1. Immediately paint high-res procedural artwork onto container canvas (Zero black screen!)
+        let thumb = WallpaperThumbnailRenderer.shared.thumbnail(for: item, size: CGSize(width: max(1920, screenBounds.width * 2), height: max(1080, screenBounds.height * 2)))
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        self.containerView.layer?.contents = thumb.cgImage(forProposedRect: nil, context: nil, hints: nil)
+        CATransaction.commit()
+        
+        // 2. Resolve video URL
+        var effectiveURL = item.videoURL
+        if item.videoURL.scheme == "wallep" || !FileManager.default.fileExists(atPath: item.videoURL.path) {
             let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
             let defaultDir = appSupport.appendingPathComponent("Wallep", isDirectory: true)
-            let fallbackURL = defaultDir.appendingPathComponent("default_cyberpunk.mp4")
+            
+            // Choose closest matching preset for category
+            let presetName: String
+            switch item.category {
+            case .cyberpunk, .cars:
+                presetName = "default_cyberpunk.mp4"
+            case .nature:
+                presetName = "default_aurora.mp4"
+            case .space:
+                presetName = "default_nebula.mp4"
+            default:
+                presetName = "default_sunset.mp4"
+            }
+            
+            let fallbackURL = defaultDir.appendingPathComponent(presetName)
             if FileManager.default.fileExists(atPath: fallbackURL.path) {
                 effectiveURL = fallbackURL
+            } else {
+                let firstFallback = defaultDir.appendingPathComponent("default_cyberpunk.mp4")
+                if FileManager.default.fileExists(atPath: firstFallback.path) {
+                    effectiveURL = firstFallback
+                }
             }
+        }
+        
+        guard FileManager.default.fileExists(atPath: effectiveURL.path) else {
+            return
         }
         
         let asset = AVURLAsset(url: effectiveURL, options: [
@@ -74,7 +107,7 @@ public final class PlayerEngine: NSObject, ObservableObject {
         ])
         
         let playerItem = AVPlayerItem(asset: asset)
-        playerItem.preferredForwardBufferDuration = 4.0
+        playerItem.preferredForwardBufferDuration = 3.0
         playerItem.canUseNetworkResourcesForLiveStreamingWhilePaused = false
         
         if crossfade {
@@ -97,6 +130,22 @@ public final class PlayerEngine: NSObject, ObservableObject {
         
         self.player.play()
         self.isPlaying = true
+    }
+    
+    public func loadVideo(url: URL, loop: Bool = true, crossfade: Bool = true) {
+        let dummyItem = WallpaperItem(
+            id: url.lastPathComponent,
+            title: url.deletingPathExtension().lastPathComponent,
+            category: .abstract,
+            resolution: "4K",
+            duration: 60.0,
+            fileSize: "10MB",
+            thumbnailURL: "",
+            videoURL: url,
+            author: "Local",
+            likes: 1
+        )
+        loadWallpaper(dummyItem, loop: loop, crossfade: crossfade)
     }
     
     public func play() {
@@ -156,7 +205,6 @@ public final class PlayerEngine: NSObject, ObservableObject {
         case .nominal, .fair:
             self.player.automaticallyWaitsToMinimizeStalling = false
         case .serious, .critical:
-            // Throttle down buffering to protect device thermals and battery
             self.player.automaticallyWaitsToMinimizeStalling = true
         @unknown default:
             break

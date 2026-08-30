@@ -57,7 +57,7 @@ public final class WallpaperManager: NSObject, ObservableObject, PowerManagerDel
         
         for feed in displayFeeds {
             if screen == nil || feed.screen == screen {
-                feed.playerEngine.loadVideo(url: item.videoURL, loop: true, crossfade: true)
+                feed.playerEngine.loadWallpaper(item, loop: true, crossfade: true)
                 if !shouldPausePlayback() {
                     feed.playerEngine.play()
                 }
