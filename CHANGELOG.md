@@ -17,3 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Drag-and-drop video import engine with metadata extraction (resolution, duration, FPS, codecs).
 - Standalone command-line interface (`wallep list`, `wallep set`, `wallep status`, `wallep pause`, `wallep resume`).
 - Companion Next.js web application with interactive macOS desktop simulation.
+
+## [1.1.0] - 2026-08-30
+### Added
+- High-definition procedural video presets for all 7 aesthetic categories.
+- Dual-channel ambient soundscape mixer with Rain and Wind sliders.
+- VoiceOver semantic accessibility traits and keyboard navigation helper.
+- Adaptive ProMotion 120Hz framerate scaling.
+- Privacy-preserving log sanitization with path and username redaction.
