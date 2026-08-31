@@ -1,4 +1,5 @@
 import Cocoa
+import AppKit
 import AVFoundation
 import CoreGraphics
 

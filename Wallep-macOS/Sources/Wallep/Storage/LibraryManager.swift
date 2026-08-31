@@ -84,13 +84,16 @@ public final class LibraryManager: ObservableObject {
             
             // Extract accurate video metadata safely
             let asset = AVURLAsset(url: destURL)
-            var durationSeconds: Double = 45.0
-            var resString = "3840x2160 (Native 4K)"
+            final class MetaBox: @unchecked Sendable {
+                var durationSeconds: Double = 45.0
+                var resString: String = "3840x2160 (Native 4K)"
+            }
+            let meta = MetaBox()
             
             let semaphore = DispatchSemaphore(value: 0)
             Task {
                 if let dur = try? await asset.load(.duration) {
-                    durationSeconds = CMTimeGetSeconds(dur)
+                    meta.durationSeconds = CMTimeGetSeconds(dur)
                 }
                 if let tracks = try? await asset.loadTracks(withMediaType: .video), let track = tracks.first {
                     if let size = try? await track.load(.naturalSize), let transform = try? await track.load(.preferredTransform) {
@@ -105,12 +108,14 @@ public final class LibraryManager: ObservableObject {
                         } else if w >= 1920 || h >= 1080 {
                             res += " (1080p FHD)"
                         }
-                        resString = res
+                        meta.resString = res
                     }
                 }
                 semaphore.signal()
             }
             _ = semaphore.wait(timeout: .now() + 1.0)
+            let durationSeconds = meta.durationSeconds
+            let resString = meta.resString
             
             let fileAttrs = try? FileManager.default.attributesOfItem(atPath: destURL.path)
             let rawBytes = (fileAttrs?[.size] as? NSNumber)?.int64Value ?? 0
