@@ -143,3 +143,9 @@ assertTest(VideoIntegrityValidator.checkIntegrity(fileURL: URL(fileURLWithPath: 
 assertTest(FavoriteCollectionStore.shared.loadFavorites().isEmpty || true, "Favorite store accessible")
 assertTest(PrivacyPreservingDiagnosticLogs.sanitizeLogString("/Users/john/test").contains("~"), "Log sanitizer redacts home directory")
 assertTest(AdaptiveFrameRateController.shared.targetFrameRate(for: NSScreen.main ?? NSScreen()) >= 60, "Adaptive framerate targets >= 60 FPS")
+
+// MARK: - 8. Engine & Battery Tests
+print("\n⚡ 8. Testing FramePacer & Energy Governor:")
+assertTest(FramePacer.shared.targetFPS(isOnBattery: false, isLowPower: false) == 120, "Target frame rate reaches 120 FPS on ProMotion AC power")
+assertTest(FramePacer.shared.targetFPS(isOnBattery: true, isLowPower: true) == 30, "Target frame rate drops to 30 FPS in low power battery mode")
+assertTest(HardwareDecoderPool.shared.isHardwareDecodingSupported(), "VideoToolbox hardware video decoding is supported")
