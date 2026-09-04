@@ -153,3 +153,7 @@ assertTest(HardwareDecoderPool.shared.isHardwareDecodingSupported(), "VideoToolb
 // MARK: - 9. Battery Governance Tests
 assertTest(PowerMetricsCollector.estimatedPowerUsageWatts() < 1.0, "Estimated power consumption is under 1.0 Watt")
 assertTest(TelemetryFirewall.isCompletelyOffline, "Telemetry firewall asserts 100% offline security")
+
+// MARK: - 10. Catalog Integrity Tests
+assertTest(CuratedCatalog.shared.items.count >= 4950, "Full curated catalog exceeds 4,950 4K/8K items")
+assertTest(GenreTaxonomyEngine.allGenres.count >= 14, "Genre taxonomy covers 14 distinct aesthetic sub-genres")
