@@ -149,3 +149,7 @@ print("\n⚡ 8. Testing FramePacer & Energy Governor:")
 assertTest(FramePacer.shared.targetFPS(isOnBattery: false, isLowPower: false) == 120, "Target frame rate reaches 120 FPS on ProMotion AC power")
 assertTest(FramePacer.shared.targetFPS(isOnBattery: true, isLowPower: true) == 30, "Target frame rate drops to 30 FPS in low power battery mode")
 assertTest(HardwareDecoderPool.shared.isHardwareDecodingSupported(), "VideoToolbox hardware video decoding is supported")
+
+// MARK: - 9. Battery Governance Tests
+assertTest(PowerMetricsCollector.estimatedPowerUsageWatts() < 1.0, "Estimated power consumption is under 1.0 Watt")
+assertTest(TelemetryFirewall.isCompletelyOffline, "Telemetry firewall asserts 100% offline security")
