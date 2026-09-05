@@ -83,6 +83,36 @@ public final class WallpaperManager: NSObject, ObservableObject, PowerManagerDel
         }
     }
     
+    public func pause() {
+        pauseAll()
+    }
+    
+    public func resume() {
+        resumeAll()
+    }
+    
+    public func nextWallpaper() {
+        let items = LibraryManager.shared.filteredWallpapers
+        guard !items.isEmpty else { return }
+        if let current = currentWallpaper, let idx = items.firstIndex(where: { $0.id == current.id }) {
+            let nextIdx = (idx + 1) % items.count
+            setWallpaper(items[nextIdx])
+        } else {
+            setWallpaper(items[0])
+        }
+    }
+    
+    public func previousWallpaper() {
+        let items = LibraryManager.shared.filteredWallpapers
+        guard !items.isEmpty else { return }
+        if let current = currentWallpaper, let idx = items.firstIndex(where: { $0.id == current.id }) {
+            let prevIdx = (idx - 1 + items.count) % items.count
+            setWallpaper(items[prevIdx])
+        } else {
+            setWallpaper(items[items.count - 1])
+        }
+    }
+    
     public func pauseAll() {
         for feed in displayFeeds {
             feed.playerEngine.pause()
