@@ -9,34 +9,34 @@ public struct GalleryView: View {
     @State private var isDragTargeted: Bool = false
     
     let columns = [
-        GridItem(.adaptive(minimum: 290, maximum: 380), spacing: 20)
+        GridItem(.adaptive(minimum: 290, maximum: 380), spacing: 22)
     ]
     
     public init() {}
     
     public var body: some View {
         VStack(spacing: 0) {
-            // Header Bar: Search, Auto-Change & Actions
+            // Header Bar: Glass Search, Auto-Change & Actions
             HStack(spacing: 14) {
-                // Search bar
-                HStack {
+                // Glass Search bar
+                HStack(spacing: 8) {
                     Image(systemName: "magnifyingglass")
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.white.opacity(0.6))
                     TextField("Search 5,000+ 4K wallpapers...", text: $library.searchQuery)
                         .textFieldStyle(.plain)
+                        .foregroundColor(.white)
                     if !library.searchQuery.isEmpty {
                         Button(action: { library.searchQuery = "" }) {
                             Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.secondary)
+                                .foregroundColor(.white.opacity(0.6))
                         }
                         .buttonStyle(.plain)
                     }
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(Color.primary.opacity(0.06))
-                .cornerRadius(10)
-                .frame(maxWidth: 340)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 9)
+                .glassmorphicSurface(cornerRadius: 12)
+                .frame(maxWidth: 360)
                 
                 // Auto-Change Quick Toggle Pill
                 Button(action: {
@@ -45,20 +45,15 @@ public struct GalleryView: View {
                     HStack(spacing: 6) {
                         Image(systemName: autoChange.isEnabled ? "clock.arrow.2.circlepath" : "clock")
                             .font(.caption)
-                            .foregroundColor(autoChange.isEnabled ? .emerald : .secondary)
+                            .foregroundColor(autoChange.isEnabled ? .emerald : .white.opacity(0.7))
                         Text(autoChange.isEnabled ? "Auto-Change: \(autoChange.timeRemainingString.isEmpty ? "Active" : autoChange.timeRemainingString)" : "Auto-Change: Off")
                             .font(.caption)
                             .fontWeight(.medium)
+                            .foregroundColor(.white)
                     }
                     .padding(.horizontal, 12)
-                    .padding(.vertical, 7)
-                    .background(autoChange.isEnabled ? Color.emerald.opacity(0.15) : Color.primary.opacity(0.05))
-                    .foregroundColor(autoChange.isEnabled ? .emerald : .primary)
-                    .cornerRadius(8)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(autoChange.isEnabled ? Color.emerald.opacity(0.3) : Color.clear, lineWidth: 1)
-                    )
+                    .padding(.vertical, 8)
+                    .glassmorphicSurface(cornerRadius: 12)
                 }
                 .buttonStyle(.plain)
                 
@@ -71,12 +66,19 @@ public struct GalleryView: View {
                         Text("Import Video")
                     }
                     .font(.subheadline)
-                    .fontWeight(.medium)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(Color.indigo)
+                    .fontWeight(.semibold)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 9)
+                    .background(
+                        LinearGradient(colors: [Color.indigo, Color.purple], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    )
                     .foregroundColor(.white)
-                    .cornerRadius(8)
+                    .cornerRadius(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.white.opacity(0.35), lineWidth: 1)
+                    )
+                    .shadow(color: Color.indigo.opacity(0.4), radius: 8, x: 0, y: 3)
                 }
                 .buttonStyle(.plain)
             }
@@ -84,29 +86,20 @@ public struct GalleryView: View {
             .padding(.top, 20)
             .padding(.bottom, 14)
             
-            // Category Selector Pills
+            // Category Filter Pills
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
+                HStack(spacing: 8) {
                     ForEach(WallpaperCategory.allCases) { category in
                         Button(action: {
-                            withAnimation(.easeInOut(duration: 0.2)) {
+                            withAnimation(.easeInOut(duration: 0.15)) {
                                 library.selectedCategory = category
                             }
                         }) {
-                            Text(category.rawValue)
-                                .font(.subheadline)
-                                .fontWeight(library.selectedCategory == category ? .semibold : .regular)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 6)
-                                .background(
-                                    library.selectedCategory == category ?
-                                    Color.indigo : Color.primary.opacity(0.06)
-                                )
-                                .foregroundColor(
-                                    library.selectedCategory == category ?
-                                    .white : .primary
-                                )
-                                .cornerRadius(20)
+                            GlassmorphicPill(isSelected: library.selectedCategory == category) {
+                                Text(category.rawValue)
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.white)
+                            }
                         }
                         .buttonStyle(.plain)
                     }
@@ -114,8 +107,6 @@ public struct GalleryView: View {
                 .padding(.horizontal, 24)
             }
             .padding(.bottom, 16)
-            
-            Divider()
             
             // Wallpapers Grid & Drag Drop Area
             ZStack {
@@ -125,14 +116,14 @@ public struct GalleryView: View {
                             .controlSize(.large)
                         Text("Loading 5,000+ 4K live wallpapers...")
                             .font(.headline)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.white.opacity(0.7))
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     ScrollView {
                         LazyVGrid(columns: columns, spacing: 24) {
                             ForEach(library.filteredWallpapers.prefix(300)) { wallpaper in
-                                WallpaperCard(
+                                GlassmorphicWallpaperCard(
                                     wallpaper: wallpaper,
                                     isHovered: hoveredItemId == wallpaper.id,
                                     isCurrentlyActive: appState.wallpaperManager.currentWallpaper?.id == wallpaper.id,
@@ -156,15 +147,15 @@ public struct GalleryView: View {
                 
                 // Drag and Drop Overlay
                 if isDragTargeted {
-                    RoundedRectangle(cornerRadius: 16)
+                    RoundedRectangle(cornerRadius: 18)
                         .stroke(Color.indigo, style: StrokeStyle(lineWidth: 3, dash: [8]))
-                        .background(Color.indigo.opacity(0.15))
+                        .background(Color.indigo.opacity(0.2))
                         .padding(16)
                         .overlay(
                             VStack(spacing: 8) {
                                 Image(systemName: "arrow.down.doc.fill")
                                     .font(.system(size: 44))
-                                    .foregroundColor(.indigo)
+                                    .foregroundColor(.white)
                                 Text("Drop video to import as Live Wallpaper")
                                     .font(.headline)
                                     .foregroundColor(.white)
@@ -176,7 +167,6 @@ public struct GalleryView: View {
                 handleDrop(providers: providers)
             }
         }
-        .background(Color(NSColor.windowBackgroundColor))
     }
     
     private func selectCustomVideo() {
@@ -209,7 +199,7 @@ public struct GalleryView: View {
     }
 }
 
-public struct WallpaperCard: View {
+public struct GlassmorphicWallpaperCard: View {
     public let wallpaper: WallpaperItem
     public let isHovered: Bool
     public let isCurrentlyActive: Bool
@@ -226,87 +216,98 @@ public struct WallpaperCard: View {
                         .aspectRatio(contentMode: .fill)
                         .frame(height: 180)
                         .clipped()
+                        .cornerRadius(14)
                     
                     // Live Indicator & Resolution Tag
                     HStack {
-                        HStack(spacing: 4) {
+                        HStack(spacing: 5) {
                             Circle()
-                                .fill(isCurrentlyActive ? Color.green : Color.red)
+                                .fill(isCurrentlyActive ? Color.emerald : Color.red)
                                 .frame(width: 6, height: 6)
-                            Text(isCurrentlyActive ? "ACTIVE" : "4K LIVE")
+                            Text(isCurrentlyActive ? "ACTIVE" : (wallpaper.resolution.contains("8K") ? "8K LIVE" : "4K LIVE"))
                                 .font(.system(size: 9, weight: .black))
                                 .foregroundColor(.white)
                         }
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(Color.black.opacity(0.65))
+                        .background(.ultraThinMaterial)
                         .cornerRadius(6)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6)
+                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                        )
                         
                         Spacer()
                         
                         Text(wallpaper.fileSize)
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(.white.opacity(0.9))
+                            .font(.system(size: 9, weight: .semibold))
                             .padding(.horizontal, 6)
                             .padding(.vertical, 3)
-                            .background(Color.black.opacity(0.5))
+                            .background(.ultraThinMaterial)
+                            .foregroundColor(.white.opacity(0.9))
                             .cornerRadius(4)
                     }
                     .padding(10)
                 }
                 
-                // Favorite Heart Button
+                // Favorite Button Overlay
                 Button(action: onToggleFavorite) {
                     Image(systemName: wallpaper.isFavorite ? "heart.fill" : "heart")
                         .foregroundColor(wallpaper.isFavorite ? .red : .white)
+                        .font(.system(size: 14))
                         .padding(8)
-                        .background(Color.black.opacity(0.5))
+                        .background(.ultraThinMaterial)
                         .clipShape(Circle())
+                        .overlay(
+                            Circle()
+                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                        )
                 }
                 .buttonStyle(.plain)
                 .padding(10)
             }
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(isCurrentlyActive ? Color.indigo : Color.clear, lineWidth: 3)
-            )
-            .shadow(color: isHovered ? Color.indigo.opacity(0.3) : Color.black.opacity(0.1), radius: isHovered ? 12 : 4, y: isHovered ? 6 : 2)
             
-            // Metadata & Apply Button
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
+            // Metadata & Apply Action
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(wallpaper.title)
-                        .font(.headline)
-                        .fontWeight(.semibold)
+                        .font(.system(size: 13, weight: .semibold))
                         .lineLimit(1)
+                        .foregroundColor(.white)
                     
                     Text("\(wallpaper.author) • \(wallpaper.category.rawValue)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(.caption2)
+                        .foregroundColor(.white.opacity(0.6))
                 }
                 
                 Spacer()
                 
                 Button(action: onSelect) {
-                    Text(isCurrentlyActive ? "Active" : "Apply")
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
+                    Text(isCurrentlyActive ? "Applied" : "Apply")
+                        .font(.system(size: 11, weight: .bold))
                         .padding(.horizontal, 14)
                         .padding(.vertical, 6)
-                        .background(isCurrentlyActive ? Color.secondary.opacity(0.2) : Color.indigo)
-                        .foregroundColor(isCurrentlyActive ? .secondary : .white)
+                        .background(
+                            isCurrentlyActive ?
+                            AnyView(Color.emerald.opacity(0.85)) :
+                            AnyView(Color.indigo.opacity(0.85))
+                        )
+                        .foregroundColor(.white)
                         .cornerRadius(8)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                        )
                 }
                 .buttonStyle(.plain)
+                .disabled(isCurrentlyActive)
             }
+            .padding(.horizontal, 4)
+            .padding(.bottom, 4)
         }
-        .padding(10)
-        .background(Color(NSColor.controlBackgroundColor))
-        .cornerRadius(16)
+        .padding(12)
+        .glassmorphicSurface(cornerRadius: 18)
+        .scaleEffect(isHovered ? 1.02 : 1.0)
+        .shadow(color: isCurrentlyActive ? Color.emerald.opacity(0.3) : (isHovered ? Color.indigo.opacity(0.3) : Color.black.opacity(0.2)), radius: isHovered ? 14 : 8, x: 0, y: isHovered ? 6 : 4)
     }
-}
-
-extension Color {
-    static let emerald = Color(red: 0.15, green: 0.80, blue: 0.45)
 }
