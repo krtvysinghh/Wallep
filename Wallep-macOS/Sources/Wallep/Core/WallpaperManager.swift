@@ -1,4 +1,5 @@
 import Cocoa
+import SwiftUI
 import AVFoundation
 import Combine
 
@@ -38,6 +39,14 @@ public final class WallpaperManager: NSObject, ObservableObject, PowerManagerDel
         for screen in NSScreen.screens {
             let window = WallpaperWindow(screen: screen)
             let engine = PlayerEngine(screenBounds: screen.frame)
+            
+            // Add Desktop Widget Overlay on Primary Screen
+            if screen == NSScreen.main || NSScreen.screens.first == screen {
+                let widgetHostingView = NSHostingView(rootView: DesktopWidgetView())
+                widgetHostingView.frame = NSRect(origin: .zero, size: screen.frame.size)
+                widgetHostingView.autoresizingMask = [.width, .height]
+                engine.containerView.addSubview(widgetHostingView)
+            }
             
             window.contentView = engine.containerView
             window.orderFront(nil)

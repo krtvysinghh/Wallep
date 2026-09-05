@@ -21,32 +21,66 @@ public struct MainAppView: View {
                 .padding(.top, 16)
                 .padding(.bottom, 12)
                 
-                VStack(spacing: 4) {
-                    SidebarTabButton(
-                        title: "Gallery",
-                        icon: "square.grid.2x2.fill",
-                        badge: "2700+",
-                        isSelected: appState.activeTab == .gallery,
-                        action: { appState.activeTab = .gallery }
-                    )
-                    
-                    SidebarTabButton(
-                        title: "Studio",
-                        icon: "wand.and.stars",
-                        badge: "Creator",
-                        isSelected: appState.activeTab == .studio,
-                        action: { appState.activeTab = .studio }
-                    )
-                    
-                    SidebarTabButton(
-                        title: "Settings",
-                        icon: "gearshape.fill",
-                        badge: nil,
-                        isSelected: appState.activeTab == .settings,
-                        action: { appState.activeTab = .settings }
-                    )
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 4) {
+                        SidebarTabButton(
+                            title: "Gallery",
+                            icon: "square.grid.2x2.fill",
+                            badge: "5000+",
+                            isSelected: appState.activeTab == .gallery,
+                            action: { appState.activeTab = .gallery }
+                        )
+                        
+                        SidebarTabButton(
+                            title: "Studio",
+                            icon: "wand.and.stars",
+                            badge: "Creator",
+                            isSelected: appState.activeTab == .studio,
+                            action: { appState.activeTab = .studio }
+                        )
+                        
+                        SidebarTabButton(
+                            title: "Soundscapes",
+                            icon: "waveform.circle.fill",
+                            badge: "Audio",
+                            isSelected: appState.activeTab == .soundscapes,
+                            action: { appState.activeTab = .soundscapes }
+                        )
+                        
+                        SidebarTabButton(
+                            title: "Widgets",
+                            icon: "square.dashed.inset.filled",
+                            badge: "HUD",
+                            isSelected: appState.activeTab == .widgets,
+                            action: { appState.activeTab = .widgets }
+                        )
+                        
+                        SidebarTabButton(
+                            title: "Playlists",
+                            icon: "music.note.list",
+                            badge: nil,
+                            isSelected: appState.activeTab == .playlists,
+                            action: { appState.activeTab = .playlists }
+                        )
+                        
+                        SidebarTabButton(
+                            title: "History",
+                            icon: "clock.arrow.circlepath",
+                            badge: nil,
+                            isSelected: appState.activeTab == .history,
+                            action: { appState.activeTab = .history }
+                        )
+                        
+                        SidebarTabButton(
+                            title: "Settings",
+                            icon: "gearshape.fill",
+                            badge: nil,
+                            isSelected: appState.activeTab == .settings,
+                            action: { appState.activeTab = .settings }
+                        )
+                    }
+                    .padding(.horizontal, 8)
                 }
-                .padding(.horizontal, 8)
                 
                 Spacer()
                 
@@ -70,12 +104,20 @@ public struct MainAppView: View {
                     GalleryView()
                 case .studio:
                     StudioView()
+                case .soundscapes:
+                    SoundscapesView()
+                case .widgets:
+                    WidgetsView()
+                case .playlists:
+                    PlaylistsView()
+                case .history:
+                    HistoryView()
                 case .settings:
                     SettingsView()
                 }
             }
         }
-        .frame(minWidth: 900, minHeight: 600)
+        .frame(minWidth: 960, minHeight: 620)
     }
 }
 

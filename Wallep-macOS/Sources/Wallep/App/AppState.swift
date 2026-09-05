@@ -4,6 +4,10 @@ import Combine
 public enum ActiveTab: String, CaseIterable, Identifiable {
     case gallery = "Gallery"
     case studio = "Studio"
+    case soundscapes = "Soundscapes"
+    case widgets = "Widgets"
+    case playlists = "Playlists"
+    case history = "History"
     case settings = "Settings"
     
     public var id: String { rawValue }
@@ -24,6 +28,10 @@ public final class AppState: ObservableObject {
     public let libraryManager = LibraryManager.shared
     public let powerManager = PowerManager.shared
     public let studio = WallpaperStudio.shared
+    public let widgetManager = DesktopWidgetManager.shared
+    public let soundscapeMixer = SpatialSoundscapeMixer.shared
+    public let solarManager = SolarTimeManager.shared
+    public let multiMonitorManager = MultiMonitorTopologyManager.shared
     
     private var cancellables = Set<AnyCancellable>()
     
